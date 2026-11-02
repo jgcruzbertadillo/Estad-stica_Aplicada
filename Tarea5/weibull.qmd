@@ -1,0 +1,68 @@
+---
+title: "Distribución Weibull"
+lang: es
+---
+
+```{=html}
+<style>
+main.content {
+text-align: justify}
+</style>
+```
+
+```{r}
+#| label: setup
+#| echo: false
+#| message: false
+#| warning: false
+
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+library(knitr)
+library(kableExtra)
+library(RColorBrewer)
+library(plotly)
+library(scales)
+library(viridis)
+
+```
+
+Desarrollar como en la demás distribuciones, incluyendo la función de probabilidad y la función de distribución, gráficas considerando el cambio en los parámetros de la distribución. Características de la distribución (media, varianza, moda, cv). Un ejemplo con valores simulados y la verificación del teorema central del límite. Tomar como referencia principal el libro Introducción a la Probabilidad de Luis Rincón, páginas 278-281.
+
+La distribución Weibull es una distribución de probabilidad continua que se utiliza ampliamente en el análisis de supervivencia, confiabilidad y modelado de tiempos de vida. Debe su nombre al matemático e ingeniero sueco Ernst Hjalmar Waloddi Weibull, quien la popularizó en la década de 1950. Su gran flexibilidad, determinada por su parámetro de forma, le permite modelar tasas de falla decrecientes, constantes o crecientes, lo que la hace idónea para describir la durabilidad de componentes electrónicos y mecánicos, así como fenómenos meteorológicos y de valores extremos.
+
+::: {#def-dist_weibull}
+Decimos que la variable aleatoria continua 
+X
+X tiene una distribución Weibull con parámetros 
+α
+>
+0
+α>0 y 
+λ
+>
+0
+λ>0 si su función de densidad de probabilidad está dada por la siguiente expresión:
+
+\begin{equation}
+f(x) = \begin{cases}
+\lambda \alpha (\lambda x)^{\alpha-1} e^{-(\lambda x)^\alpha} & \text{si } x > 0, \
+0 & \text{en otro caso}.
+\end{cases}
+\end{equation}
+
+A la constante \alpha se le llama parámetro de forma y a \lambda se le llama parámetro de escala. Escribimos entonces X∼Weibull
+(
+\alpha
+,
+\lambda
+)
+X∼Weibull(α,λ).
+:::
+
+
+
+
+
+

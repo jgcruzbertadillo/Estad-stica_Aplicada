@@ -1,0 +1,585 @@
+---
+title: "Distribución Hipergeométrica"
+lang: es
+---
+
+```{=html}
+<style>
+main.content {
+text-align: justify}
+</style>
+```
+
+
+
+
+```{r}
+#| label: setup
+#| echo: false
+#| message: false
+#| warning: false
+
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+library(knitr)
+library(kableExtra)
+library(RColorBrewer)
+library(plotly)
+library(scales)
+library(viridis)
+library(tidyr)
+```
+
+La **distribución hipergeométrica** es una distribución de probabilidad discreta que surge en el contexto de la toma de una muestra de un conjunto finito de objetos de dos tipos, **sin reemplazo**. A diferencia de la distribución binomial, donde la probabilidad de éxito se mantiene constante en cada ensayo, en la hipergeométrica la probabilidad cambia a medida que se extraen elementos, porque el tamaño de la población disminuye y la composición se modifica.
+
+::: {#def-hipergeometrica}
+Supongamos que tenemos $N$ objetos dentro de una caja, de los cuales $K$ son de un primer tipo y $N-K$ son de un segundo tipo. Se toma al azar una muestra de tamaño $n$ **sin reemplazo** y sin importar el orden. Sea $X$ la variable aleatoria que cuenta el número de objetos del primer tipo en la muestra. Decimos que $X$ tiene una **distribución hipergeométrica** con parámetros $N$, $K$ y $n$, y escribimos $X \sim \text{hipergeo}(N, K, n)$, si su función de probabilidad está dada por:
+
+$$
+f(x) = \begin{cases}
+\dfrac{\dbinom{K}{x} \dbinom{N-K}{n-x}}{\dbinom{N}{n}} & \text{si } x = 0, 1, \ldots, n, \\[10pt]
+0 & \text{en otro caso.}
+\end{cases}
+$$
+
+Los parámetros son:
+
+- $N$: tamaño total de la población (entero positivo)
+- $K$: número de objetos del primer tipo en la población ($0 \leq K \leq N$)
+- $n$: tamaño de la muestra ($1 \leq n \leq N$)
+:::
+
+**Interpretación de los parámetros**
+
+El término $\binom{K}{x}$ cuenta las formas de escoger $x$ objetos del primer tipo; $\binom{N-K}{n-x}$ cuenta las formas de escoger los $n-x$ objetos restantes del segundo tipo; y $\binom{N}{n}$ es el total de muestras posibles de tamaño $n$. Por el principio multiplicativo, el numerador da el número de muestras favorables, y al dividir entre el total se obtiene la probabilidad.
+
+**Restricción técnica.** Para que $X$ pueda tomar todos los valores $0, 1, \ldots, n$ se suele suponer que $n \leq \min\{K, N-K\}$. Si no se cumple, algunos valores extremos simplemente tienen probabilidad cero y la fórmula sigue siendo válida.
+
+**Relación con otras distribuciones**
+
+- Si $n=1$, la hipergeométrica se reduce a una Bernoulli con $p = K/N$.
+- Si $N \to \infty$ y $K \to \infty$ de modo que $K/N \to p$, la hipergeométrica converge a la binomial $\text{bin}(n, p)$. Es decir, muestrear sin reemplazo de una población muy grande es prácticamente como muestrear con reemplazo.
+
+## Propiedades de la función de probabilidad (PDF)
+
+Como se indicó previamente, la función de probabilidad de la distribución hipergeométrica está dada por:
+
+$$
+f(x; N, K, n) = \dfrac{\dbinom{K}{x} \dbinom{N-K}{n-x}}{\dbinom{N}{n}}, \quad x = 0, 1, \ldots, n
+$$
+
+**Propiedades fundamentales**
+
+- **Dominio**: $x \in \{0, 1, \ldots, n\}$.
+- **Imagen**: $f(x) \in [0, 1]$.
+- **Normalización**: $\displaystyle\sum_{x=0}^{n} f(x) = 1$ (por la identidad de Vandermonde).
+
+### Efecto de los parámetros
+
+**Efecto de $N$ (tamaño de la población):**
+
+- Para $K$ y $n$ fijos, al aumentar $N$ la distribución se concentra más alrededor de su media.
+- Cuando $N$ es grande en relación con $n$, la hipergeométrica se parece a la binomial con $p = K/N$.
+
+**Efecto de $K$ (número de objetos del primer tipo):**
+
+- Al aumentar $K$, la distribución se desplaza hacia la derecha (mayor número esperado de objetos del primer tipo).
+- La media crece linealmente con $K$.
+
+**Efecto de $n$ (tamaño de la muestra):**
+
+- Al aumentar $n$, la distribución se ensancha y su media crece.
+- Para $n$ grande (cercano a $N$), la distribución se concentra alrededor de $K$ (pues se extrae casi toda la población).
+
+**Visualización de la PDF para diferentes parámetros**
+
+```{r}
+#| label: pdf-hipergeom
+#| fig-cap: "Función de probabilidad hipergeométrica para diferentes parámetros"
+#| warning: false
+
+# Gráfico 1: variando K con N y n fijos
+N_fijo <- 50
+n_fijo <- 10
+K_vals <- c(10, 20, 30, 40)
+
+df_K <- data.frame()
+for (k in K_vals) {
+  x_vals <- 0:n_fijo
+  df_K <- rbind(df_K, data.frame(
+    x = x_vals,
+    prob = dhyper(x_vals, m = k, n = N_fijo - k, k = n_fijo),
+    parametro = paste0("K = ", k)
+  ))
+}
+
+p1 <- ggplot(df_K, aes(x = x, y = prob, fill = parametro)) +
+  geom_col(position = "dodge", alpha = 0.8) +
+  scale_fill_viridis_d() +
+  labs(title = "Variando K (N = 50, n = 10)",
+       x = "x (objetos del primer tipo en la muestra)",
+       y = "P(X = x)", fill = "Parámetro") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "bottom")
+
+# Gráfico 2: variando n con N y K fijos
+N_fijo2 <- 50
+K_fijo2 <- 20
+n_vals <- c(5, 10, 20, 30)
+
+df_n <- data.frame()
+for (n in n_vals) {
+  x_vals <- 0:n
+  df_n <- rbind(df_n, data.frame(
+    x = x_vals,
+    prob = dhyper(x_vals, m = K_fijo2, n = N_fijo2 - K_fijo2, k = n),
+    parametro = paste0("n = ", n)
+  ))
+}
+
+p2 <- ggplot(df_n, aes(x = x, y = prob, fill = parametro)) +
+  geom_col(position = "dodge", alpha = 0.8) +
+  scale_fill_viridis_d() +
+  labs(title = "Variando n (N = 50, K = 20)",
+       x = "x (objetos del primer tipo en la muestra)",
+       y = "P(X = x)", fill = "Parámetro") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "bottom")
+
+grid.arrange(p1, p2, ncol = 2)
+```
+
+**Observaciones sobre las gráficas**
+
+1. **Efecto de $K$:** al aumentar $K$ (mayor proporción de objetos del primer tipo), la distribución se desplaza hacia la derecha. La media crece linealmente con $K/N$.
+2. **Efecto de $n$:** al aumentar $n$, la distribución se ensancha porque hay más valores posibles; además la media se desplaza hacia la derecha.
+3. **Forma:** la hipergeométrica es similar a la binomial pero con varianza menor, porque muestrear sin reemplazo reduce la variabilidad (cada extracción elimina un elemento de la población).
+
+## Propiedades de la CDF
+
+La función de distribución acumulativa (CDF) de una variable aleatoria $X \sim \text{hipergeo}(N, K, n)$ está definida como:
+
+$$
+F(x) = P(X \leq x) = \sum_{i=0}^{\lfloor x \rfloor} \frac{\dbinom{K}{i} \dbinom{N-K}{n-i}}{\dbinom{N}{n}}
+$$
+
+para $x \geq 0$, y $F(x) = 0$ para $x < 0$.
+
+**Propiedades generales**
+
+La CDF hipergeométrica satisface todas las propiedades de una función de distribución válida:
+
+- **Monotonía**: $F(x)$ es no decreciente.
+- **Límites**: $\lim_{x \to -\infty} F(x) = 0$ y $\lim_{x \to \infty} F(x) = 1$.
+- **Continuidad por la derecha**: $F(x)$ es constante por intervalos y continua por la derecha.
+- **Saltos**: el tamaño del salto en $x$ es exactamente $f(x) = P(X = x)$.
+
+```{r}
+#| label: cdf-hipergeom
+#| fig-cap: "Función de distribución acumulativa hipergeométrica para diferentes parámetros"
+#| warning: false
+
+# CDF para diferentes K
+df_cdf_K <- data.frame()
+for (k in K_vals) {
+  x_vals <- 0:n_fijo
+  df_cdf_K <- rbind(df_cdf_K, data.frame(
+    x = x_vals,
+    F = phyper(x_vals, m = k, n = N_fijo - k, k = n_fijo),
+    parametro = paste0("K = ", k)
+  ))
+}
+
+ggplot(df_cdf_K, aes(x = x, y = F, color = parametro)) +
+  geom_step(linewidth = 1.2) +
+  geom_point(size = 2) +
+  scale_color_viridis_d() +
+  labs(title = "CDF hipergeométrica variando K (N = 50, n = 10)",
+       x = "x", y = "F(x) = P(X ≤ x)", color = "Parámetro") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "bottom")
+```
+
+**Cálculo de probabilidades**
+
+Para calcular $P(a \leq X \leq b)$ con $0 \leq a < b \leq n$:
+
+$$
+P(a \leq X \leq b) = F(b) - F(a-1) = \sum_{x=a}^{b} \frac{\dbinom{K}{x} \dbinom{N-K}{n-x}}{\dbinom{N}{n}}
+$$
+
+```{r}
+#| label: ejemplo-prob-intervalo
+#| warning: false
+
+# Ejemplo: X ~ hipergeo(N=50, K=20, n=10)
+N_ej <- 50
+K_ej <- 20
+n_ej <- 10
+
+a_val <- 3
+b_val <- 7
+
+prob_intervalo <- phyper(b_val, m = K_ej, n = N_ej - K_ej, k = n_ej) -
+                  phyper(a_val - 1, m = K_ej, n = N_ej - K_ej, k = n_ej)
+
+cat("Para X ~ hipergeo(N =", N_ej, ", K =", K_ej, ", n =", n_ej, "):\n")
+cat("P(", a_val, "≤ X ≤", b_val, ") =", round(prob_intervalo, 4), "\n")
+
+# Visualización del área (barras resaltadas)
+x_vals <- 0:n_ej
+df_prob <- data.frame(
+  x = x_vals,
+  prob = dhyper(x_vals, m = K_ej, n = N_ej - K_ej, k = n_ej),
+  dentro = x_vals >= a_val & x_vals <= b_val
+)
+
+ggplot(df_prob, aes(x = x, y = prob, fill = dentro)) +
+  geom_col(alpha = 0.8, width = 0.8) +
+  scale_fill_manual(values = c("TRUE" = "firebrick", "FALSE" = "grey70"),
+                    labels = c("TRUE" = "En el intervalo", "FALSE" = "Fuera"),
+                    name = NULL) +
+  labs(title = paste0("P(", a_val, " ≤ X ≤ ", b_val, ") = ",
+                      round(prob_intervalo, 4)),
+       subtitle = paste("Hipergeométrica(N =", N_ej, ", K =", K_ej,
+                        ", n =", n_ej, ")"),
+       x = "x", y = "P(X = x)") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5),
+        legend.position = "bottom")
+```
+
+## Medidas descriptivas
+
+Aplicando las definiciones de esperanza y varianza para variables aleatorias discretas, se puede demostrar que:
+
+**Media (Esperanza)**
+
+$$
+E(X) = \mu = n \cdot \frac{K}{N}
+$$
+
+Es decir, la media es el tamaño de la muestra multiplicado por la proporción de objetos del primer tipo en la población. Esta expresión es intuitiva: en promedio, la muestra refleja la misma proporción que la población.
+
+**Varianza**
+
+$$
+\text{Var}(X) = \sigma^2 = n \cdot \frac{K}{N} \cdot \frac{N-K}{N} \cdot \frac{N-n}{N-1}
+$$
+
+**Desviación estándar**
+
+$$
+\sigma = \sqrt{n \cdot \frac{K}{N} \cdot \frac{N-K}{N} \cdot \frac{N-n}{N-1}}
+$$
+
+**Observaciones importantes**
+
+- El factor $\dfrac{N-n}{N-1}$ se llama **factor de corrección por población finita**. Cuando $N \to \infty$, este factor tiende a $1$ y la varianza de la hipergeométrica coincide con la de la binomial $n p (1-p)$ con $p = K/N$.
+- Cuando $n = 1$, la varianza se reduce a $\frac{K}{N}\left(1-\frac{K}{N}\right)$, la de una Bernoulli.
+- Cuando $n = N$, la varianza es cero (la muestra es toda la población, no hay azar).
+
+**Coeficiente de variación**
+
+$$
+CV = \frac{\sigma}{\mu} = \sqrt{\frac{(1-K/N)(N-n)}{n(N-1)}} \cdot \frac{1}{\sqrt{K/N \cdot \ldots}}
+$$
+
+En la práctica basta con $\text{CV} = \sigma / \mu$.
+
+**Moda**
+
+La moda está dada por:
+
+$$
+\text{Moda} = \left\lfloor \frac{(n+1)(K+1)}{N+2} \right\rfloor
+$$
+
+(la parte entera del cociente). Si este cociente es entero, la distribución es bimodal en $m$ y $m-1$.
+
+**Tabla comparativa de medidas**
+
+```{r}
+#| label: tabla-medidas-hipergeom
+#| warning: false
+
+N_med <- 50
+K_med <- 20
+n_med <- 10
+
+media_teorica    <- n_med * K_med / N_med
+varianza_teorica <- n_med * (K_med / N_med) * ((N_med - K_med) / N_med) *
+                    ((N_med - n_med) / (N_med - 1))
+desv_teorica     <- sqrt(varianza_teorica)
+cv_teorico       <- desv_teorica / media_teorica
+moda_teorica     <- floor((n_med + 1) * (K_med + 1) / (N_med + 2))
+
+resumen_med <- data.frame(
+  Medida    = c("Media", "Varianza", "Desviación Estándar",
+                "Coeficiente de Variación", "Moda"),
+  Valor     = round(c(media_teorica, varianza_teorica, desv_teorica,
+                      cv_teorico, moda_teorica), 4)
+)
+
+kable(resumen_med,
+      caption = paste("Medidas descriptivas para hipergeo(N =", N_med,
+                      ", K =", K_med, ", n =", n_med, ")")) |>
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+**Visualización de la media en la distribución**
+
+```{r}
+#| label: media-hipergeom
+#| fig-cap: "Localización de la media en la PDF hipergeométrica"
+#| warning: false
+
+x_vals <- 0:n_med
+df_media <- data.frame(
+  x = x_vals,
+  prob = dhyper(x_vals, m = K_med, n = N_med - K_med, k = n_med)
+)
+
+ggplot(df_media, aes(x = x, y = prob)) +
+  geom_col(fill = "steelblue", alpha = 0.7, width = 0.7) +
+  geom_vline(xintercept = media_teorica, color = "firebrick",
+             linetype = "dashed", linewidth = 1.2) +
+  geom_vline(xintercept = moda_teorica, color = "darkgreen",
+             linetype = "dotted", linewidth = 1.2) +
+  annotate("text", x = media_teorica + 0.5, y = max(df_media$prob) * 0.9,
+           label = paste0("Media = ", round(media_teorica, 2)),
+           color = "firebrick", hjust = 0) +
+  annotate("text", x = moda_teorica + 0.5, y = max(df_media$prob) * 0.75,
+           label = paste0("Moda = ", moda_teorica),
+           color = "darkgreen", hjust = 0) +
+  labs(title = paste("Hipergeométrica(N =", N_med, ", K =", K_med,
+                     ", n =", n_med, ")"),
+       x = "x", y = "P(X = x)") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## Ejemplo con valores simulados
+
+Consideremos una urna con $N = 50$ objetos, de los cuales $K = 20$ son de un primer tipo (digamos, canicas rojas) y $N-K = 30$ son del segundo tipo (canicas azules). Se extrae una muestra de tamaño $n = 10$ sin reemplazo. Simularemos 10,000 extracciones y compararemos los estadísticos muestrales con los valores teóricos.
+
+```{r}
+#| label: simulacion-hipergeom
+#| warning: false
+
+set.seed(2024)
+
+N_sim <- 50
+K_sim <- 20
+n_sim <- 10
+num_rep <- 10000
+
+# Parámetros teóricos
+mu_teo  <- n_sim * K_sim / N_sim
+var_teo <- n_sim * (K_sim / N_sim) * ((N_sim - K_sim) / N_sim) *
+           ((N_sim - n_sim) / (N_sim - 1))
+
+# Simulación: en cada repetición extraemos n_sim objetos sin reemplazo
+simulaciones <- replicate(num_rep, {
+  muestra <- sample(rep(0:1, c(N_sim - K_sim, K_sim)), size = n_sim,
+                    replace = FALSE)
+  sum(muestra)
+})
+
+# Estadísticos muestrales
+mu_sim  <- mean(simulaciones)
+var_sim <- var(simulaciones)
+sd_sim  <- sd(simulaciones)
+
+# Tabla comparativa
+tabla_comp <- data.frame(
+  Medida   = c("Media", "Varianza", "Desviación Estándar"),
+  Teórica  = round(c(mu_teo, var_teo, sqrt(var_teo)), 4),
+  Simulada = round(c(mu_sim, var_sim, sd_sim), 4),
+  `Error relativo (%)` = round(100 * abs(c(mu_teo, var_teo, sqrt(var_teo)) -
+                                            c(mu_sim, var_sim, sd_sim)) /
+                                 c(mu_teo, var_teo, sqrt(var_teo)), 3),
+  check.names = FALSE
+)
+
+kable(tabla_comp,
+      caption = paste("Comparación teórica vs simulada para hipergeo(N =",
+                      N_sim, ", K =", K_sim, ", n =", n_sim, ")")) |>
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+**Histograma vs PDF teórica**
+
+```{r}
+#| label: hist-vs-pdf-hipergeom
+#| fig-cap: "Histograma de la simulación vs PDF teórica"
+#| warning: false
+
+x_vals <- 0:n_sim
+teorica <- data.frame(
+  x = x_vals,
+  prob = dhyper(x_vals, m = K_sim, n = N_sim - K_sim, k = n_sim)
+)
+
+ggplot(data.frame(x = simulaciones), aes(x = x)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 binwidth = 1, boundary = -0.5,
+                 fill = "lightblue", color = "black", alpha = 0.7) +
+  geom_col(data = teorica, aes(x = x, y = prob),
+           fill = "firebrick", alpha = 0.5, width = 0.4,
+           inherit.aes = FALSE) +
+  geom_line(data = teorica, aes(x = x, y = prob),
+            color = "firebrick", linewidth = 1.2,
+            inherit.aes = FALSE) +
+  geom_vline(xintercept = mu_teo, color = "darkgreen",
+             linetype = "dashed", linewidth = 1) +
+  labs(title = "Simulación vs PDF teórica",
+       subtitle = paste0(num_rep, " simulaciones de hipergeo(N = ", N_sim,
+                         ", K = ", K_sim, ", n = ", n_sim, ")"),
+       x = "x (objetos del primer tipo en la muestra)",
+       y = "Densidad / Probabilidad") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
+```
+
+## Verificación del Teorema Central del Límite
+
+El Teorema Central del Límite establece que, para una sucesión de variables aleatorias independientes e idénticamente distribuidas con media $\mu$ y varianza $\sigma^2$ finitas, la distribución de las medias muestrales se aproxima a una normal:
+
+$$
+\bar{X}_m \xrightarrow{d} N\left(\mu, \frac{\sigma^2}{m}\right) \quad \text{cuando } m \to \infty
+$$
+
+En el caso de la hipergeométrica, la población tiene media $\mu = n K/N$ y varianza $\sigma^2 = n \frac{K}{N}\frac{N-K}{N}\frac{N-n}{N-1}$. Si tomamos **muestras de tamaño $m$** de esta población hipergeométrica y calculamos la media muestral $\bar{X}_m$, el TCL asegura que:
+
+$$
+\bar{X}_m \approx N\left(n\frac{K}{N}, \ \frac{\sigma^2}{m}\right)
+$$
+
+para $m$ suficientemente grande.
+
+**Verificación numérica**
+
+Fijamos $N = 200$, $K = 80$, $n = 20$ (una población hipergeométrica con $\mu = 8$ y $\sigma^2 \approx 5.628$). Para distintos tamaños de muestra $m \in \{5, 10, 30, 50, 100\}$, generamos 1000 medias muestrales y comparamos su distribución con la normal teórica.
+
+```{r}
+#| label: tcl-hipergeom
+#| fig-cap: "Verificación del TCL para la distribución hipergeométrica"
+#| warning: false
+
+set.seed(2024)
+
+N_tcl <- 200
+K_tcl <- 80
+n_tcl <- 20
+mu_pob  <- n_tcl * K_tcl / N_tcl
+var_pob <- n_tcl * (K_tcl / N_tcl) * ((N_tcl - K_tcl) / N_tcl) *
+           ((N_tcl - n_tcl) / (N_tcl - 1))
+
+tamaños_m <- c(5, 10, 30, 50, 100)
+num_muestras <- 1000
+
+resultados_tcl <- data.frame()
+for (m in tamaños_m) {
+  medias_m <- replicate(num_muestras, {
+    # Cada "observación" es una hipergeométrica; la muestra tiene m obs.
+    obs <- replicate(m, {
+      muestra <- sample(rep(0:1, c(N_tcl - K_tcl, K_tcl)),
+                        size = n_tcl, replace = FALSE)
+      sum(muestra)
+    })
+    mean(obs)
+  })
+  resultados_tcl <- rbind(resultados_tcl, data.frame(
+    medias = medias_m,
+    m = m,
+    var_teo_media = var_pob / m
+  ))
+}
+resultados_tcl$m_factor <- factor(paste("m =", resultados_tcl$m),
+                                  levels = paste("m =", tamaños_m))
+
+# Tabla comparativa
+tabla_tcl <- resultados_tcl |>
+  group_by(m) |>
+  summarise(
+    media_observada    = mean(medias),
+    media_teorica      = mu_pob,
+    varianza_observada = var(medias),
+    varianza_teorica   = first(var_teo_media),
+    .groups = "drop"
+  )
+
+kable(tabla_tcl,
+      caption = "TCL con hipergeométrica: medias y varianzas de las medias muestrales",
+      digits = 4) |>
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+
+# Curvas normales teóricas
+df_norm <- data.frame()
+x_rango <- seq(mu_pob - 4 * sqrt(var_pob / 5),
+               mu_pob + 4 * sqrt(var_pob / 5),
+               length.out = 300)
+for (m in tamaños_m) {
+  df_norm <- rbind(df_norm, data.frame(
+    x = x_rango,
+    y = dnorm(x_rango, mean = mu_pob, sd = sqrt(var_pob / m)),
+    m_factor = paste("m =", m)
+  ))
+}
+df_norm$m_factor <- factor(df_norm$m_factor,
+                           levels = levels(resultados_tcl$m_factor))
+
+ggplot(resultados_tcl, aes(x = medias)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 30,
+                 fill = "lightblue", color = "black", alpha = 0.7) +
+  geom_vline(xintercept = mu_pob, color = "red",
+             linetype = "dashed", linewidth = 1) +
+  geom_line(data = df_norm, aes(x = x, y = y),
+            color = "firebrick", linewidth = 1, alpha = 0.8,
+            inherit.aes = FALSE) +
+  facet_wrap(~m_factor, scales = "free_y", ncol = 3) +
+  labs(title = "Teorema Central del Límite - Hipergeométrica(N = 200, K = 80, n = 20)",
+       subtitle = "Distribución de las medias muestrales con curva normal teórica N(μ, σ²/m)",
+       x = "Media muestral", y = "Densidad",
+       caption = "Línea roja: media poblacional y curva normal teórica") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 13),
+        plot.subtitle = element_text(hjust = 0.5, size = 11),
+        strip.text = element_text(size = 12, face = "bold"))
+```
+
+**Prueba de normalidad y Q-Q plot para $m = 100$**
+
+```{r}
+#| label: tcl-hipergeom-normalidad
+#| warning: false
+
+medias_m100 <- resultados_tcl$medias[resultados_tcl$m == 100]
+sw <- shapiro.test(medias_m100)
+
+ggplot(data.frame(medias = medias_m100), aes(sample = medias)) +
+  geom_qq() +
+  geom_qq_line(color = "red", linewidth = 1) +
+  labs(title = "Q-Q Plot - Medias muestrales (m = 100)",
+       subtitle = paste("Shapiro-Wilk: W =", round(sw$statistic, 4),
+                        ", p-valor =", round(sw$p.value, 4)),
+       x = "Cuantiles teóricos (Normal)",
+       y = "Cuantiles observados") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
+```
+
+**Observaciones sobre la verificación del TCL**
+
+1. **Media:** la media de las medias muestrales se mantiene aproximadamente constante alrededor de $\mu = 8$ para todos los tamaños de muestra, como predice la teoría.
+2. **Varianza:** la varianza de las medias muestrales decrece como $\sigma^2 / m$, coincidiendo con el valor teórico.
+3. **Forma:** para $m = 5$ la distribución de las medias aún refleja cierta asimetría de la población original; conforme $m$ crece, la distribución se vuelve más simétrica y acampanada. Para $m \geq 30$ la aproximación normal es bastante buena, y para $m = 100$ es excelente (el p-valor de Shapiro-Wilk es alto y el Q-Q plot se alinea con la recta).
+4. **Interpretación:** esto ilustra que, aunque la hipergeométrica es una distribución discreta y acotada, sus medias muestrales se comportan como una normal cuando el tamaño de muestra es grande. Es la misma idea que hemos visto en las otras distribuciones, y confirma la universalidad del TCL.
